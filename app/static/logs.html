@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Attendor Worker - Live Logs</title>
+  <style>
+    body { font-family: ui-monospace, Consolas, monospace; background: #0d1117; color: #c9d1d9; margin: 0; padding: 16px; }
+    h1 { font-size: 18px; color: #58a6ff; }
+    .status { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 12px; }
+    .ok { background: #1f6feb55; color: #79c0ff; }
+    .bad { background: #f8514955; color: #ffa198; }
+    #logs { margin-top: 12px; }
+    .row { padding: 4px 0; border-bottom: 1px solid #21262d; font-size: 13px; }
+    .ts { color: #8b949e; margin-right: 8px; }
+    .INFO { color: #7ee787; }
+    .WARN { color: #d29922; }
+    .ERROR { color: #f85149; }
+  </style>
+</head>
+<body>
+  <h1>Attendor Worker <span id="conn" class="status ok">connecting</span></h1>
+  <div id="logs">loading...</div>
+  <script>
+    const logsEl = document.getElementById('logs');
+    const connEl = document.getElementById('conn');
+    fetch('/api/logs').then(r => r.json()).then(({ logs }) => {
+      logsEl.innerHTML = '';
+      logs.forEach(render);
+    });
+    const es = new EventSource('/api/logs/stream');
+    es.onopen = () => { connEl.textContent = 'connected'; connEl.className = 'status ok'; };
+    es.onerror = () => { connEl.textContent = 'reconnecting'; connEl.className = 'status bad'; };
+    es.onmessage = e => { render(JSON.parse(e.data)); };
+    function render(entry) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `<span class="ts">${entry.ts}</span>` +
+        `<span class="${entry.level}">[${entry.level}]</span> ${entry.message}`;
+      logsEl.prepend(row);
+      while (logsEl.children.length > 200) logsEl.removeChild(logsEl.lastChild);
+    }
+  </script>
+</body>
+</html>
